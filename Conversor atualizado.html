@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+<title>Gerador de Melodia por Nome</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/midiwriter-js@2.1.1/build/MidiWriter.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#1c1f2b;
+color:white;
+text-align:center;
+padding:40px;
+}
+
+.container{
+background:#2a2f44;
+padding:30px;
+border-radius:10px;
+max-width:900px;
+margin:auto;
+}
+
+input,select{
+font-size:18px;
+padding:10px;
+width:250px;
+margin:5px;
+}
+
+button{
+padding:10px 20px;
+margin:6px;
+cursor:pointer;
+border:none;
+border-radius:6px;
+background:#4b6cff;
+color:white;
+}
+
+button:hover{
+background:#6d87ff;
+}
+
+#melodia{
+margin-top:20px;
+font-size:18px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Gerador de Melodia por Nome</h1>
+
+<input id="nome" placeholder="Digite seu nome">
+
+<br>
+
+<select id="instrumento">
+
+<option value="synth">Sintetizador</option>
+<option value="organ">Órgão</option>
+<option value="strings">Cordas</option>
+
+</select>
+
+<br>
+
+<label>BPM:</label>
+<input type="number" id="bpm" value="100" min="40" max="200">
+
+<br><br>
+
+<button onclick="converter()">Gerar Melodia</button>
+<button onclick="togglePlay()" id="playBtn">Play</button>
+<button onclick="baixarMIDI()">Baixar MIDI</button>
+<button onclick="baixarMusicXML()">Exportar MusicXML</button>
+
+<h3>Sequência de notas</h3>
+
+<p id="melodia"></p>
+
+</div>
+
+<script>
+
+let melodiaGlobal=[]
+
+let synth
+let tocando=false
+let eventos=[]
+
+const tabelaReferencial={
+A:"A",B:"B",C:"C",D:"D",E:"E",F:"F",G:"G",
+H:"F#",I:"Bb",J:"C#",K:"ATONAL",
+L:"Eb",M:"G#",N:"Ab",O:"D#",P:"Db",
+Q:"A#",R:"Gb",S:"E#",T:"Cb",U:"B#",
+V:"Fb",W:"MAIOR",X:"MENOR",Y:"MODAL",
+Z:"TRANSPOSIÇÃO LIMITADA"
+}
+
+const cromaticaSharp=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
+const cromaticaFlat=["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"]
+
+function grauLetra(l){
+
+const mapa={
+A:1,N:1,B:2,O:2,C:3,P:3,D:4,Q:4,
+E:5,R:5,F:6,S:6,G:7,T:7,H:8,U:8,
+I:9,V:9,J:10,W:10,K:11,X:11,
+L:12,Y:12,M:13,Z:13
+}
+
+return mapa[l]
+
+}
+
+function gerarEscala(base){
+
+let usarFlat=base.includes("b")
+let escalaBase=usarFlat?cromaticaFlat:cromaticaSharp
+let index=escalaBase.indexOf(base)
+
+let escala=[]
+
+for(let i=0;i<13;i++){
+escala.push(escalaBase[(index+i)%12])
+}
+
+return escala
+
+}
+
+function temAcento(c){
+return /[áàâãéèêíìîóòôõúùûç]/i.test(c)
+}
+
+function converter(){
+
+let nomeOriginal=document.getElementById("nome").value
+let nome=nomeOriginal.toUpperCase()
+
+let primeira=nome[0]
+let ref=tabelaReferencial[primeira]
+
+if(ref=="MAIOR"||ref=="MENOR"||ref=="MODAL"||ref=="TRANSPOSIÇÃO LIMITADA"||ref=="ATONAL"){
+ref=tabelaReferencial[nome[1]]
+}
+
+let escala=gerarEscala(ref)
+
+let melodia=[]
+
+for(let i=0;i<nomeOriginal.length;i++){
+
+let c=nomeOriginal[i]
+let letra=nome[i]
+
+if(c===" "){
+melodia.push("|")
+continue
+}
+
+if(temAcento(c)){
+melodia.push("(pausa)")
+continue
+}
+
+let grau=grauLetra(letra)
+
+if(grau){
+melodia.push(escala[grau-1])
+}
+
+}
+
+melodiaGlobal=melodia
+
+document.getElementById("melodia").innerText=melodia.join(" - ")
+
+}
+
+async function togglePlay(){
+
+await Tone.start()
+
+if(!tocando){
+
+let tipo=document.getElementById("instrumento").value
+
+if(tipo==="synth"){
+synth=new Tone.PolySynth(Tone.Synth).toDestination()
+}
+
+if(tipo==="organ"){
+synth=new Tone.PolySynth(Tone.FMSynth).toDestination()
+}
+
+if(tipo==="strings"){
+synth=new Tone.PolySynth(Tone.Synth,{
+envelope:{
+attack:0.5,
+decay:0.2,
+sustain:0.9,
+release:1.5
+}
+}).toDestination()
+}
+
+let tempo=0
+
+melodiaGlobal.forEach(n=>{
+
+if(n==="|"||n==="(pausa)"){
+tempo+=0.5
+return
+}
+
+let id=Tone.Transport.schedule(time=>{
+synth.triggerAttackRelease(n+"4","8n",time)
+},tempo)
+
+eventos.push(id)
+
+tempo+=0.5
+
+})
+
+let bpm = document.getElementById("bpm").value
+Tone.Transport.bpm.value = bpm
+
+Tone.Transport.start()
+
+document.getElementById("playBtn").innerText="Stop"
+
+tocando=true
+
+}else{
+
+Tone.Transport.stop()
+
+eventos.forEach(e=>Tone.Transport.clear(e))
+
+eventos=[]
+
+document.getElementById("playBtn").innerText="Play"
+
+tocando=false
+
+}
+
+}
+
+function baixarMIDI(){
+
+let track=new MidiWriter.Track()
+
+melodiaGlobal.forEach(n=>{
+
+if(n==="|"||n==="(pausa)"){
+track.addEvent(new MidiWriter.NoteEvent({wait:"4"}))
+}
+else{
+track.addEvent(new MidiWriter.NoteEvent({
+pitch:[n],
+duration:"4"
+}))
+}
+
+})
+
+let writer=new MidiWriter.Writer([track])
+
+let blob=new Blob([writer.buildFile()],{type:"audio/midi"})
+
+let url=URL.createObjectURL(blob)
+
+let link=document.createElement("a")
+
+link.href=url
+link.download="melodia.mid"
+
+link.click()
+
+}
+
+function baixarMusicXML(){
+
+let notasPorCompasso=4
+let contador=0
+let numeroCompasso=1
+
+let xml=`<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE score-partwise PUBLIC
+"-//Recordare//DTD MusicXML 3.1 Partwise//EN"
+"https://www.musicxml.org/dtds/partwise.dtd">
+
+<score-partwise version="3.1">
+
+<part-list>
+<score-part id="P1">
+<part-name>Melodia</part-name>
+</score-part>
+</part-list>
+
+<part id="P1">
+
+<measure number="1">
+
+<attributes>
+<divisions>1</divisions>
+<key>
+<fifths>0</fifths>
+</key>
+<time>
+<beats>4</beats>
+<beat-type>4</beat-type>
+</time>
+<clef>
+<sign>G</sign>
+<line>2</line>
+</clef>
+</attributes>
+`
+
+melodiaGlobal.forEach(n=>{
+
+if(contador===notasPorCompasso){
+
+xml+=`</measure><measure number="${++numeroCompasso}">`
+contador=0
+
+}
+
+if(n==="|"||n==="(pausa)"){
+
+xml+=`
+<note>
+<rest/>
+<duration>1</duration>
+<voice>1</voice>
+<type>quarter</type>
+</note>
+`
+
+}else{
+
+let step=n[0]
+
+let alterTag=""
+
+if(n.includes("#")){
+alterTag="<alter>1</alter>"
+}
+
+if(n.includes("b")){
+alterTag="<alter>-1</alter>"
+}
+
+xml+=`
+<note>
+<pitch>
+<step>${step}</step>
+${alterTag}
+<octave>4</octave>
+</pitch>
+<duration>1</duration>
+<voice>1</voice>
+<type>quarter</type>
+</note>
+`
+
+}
+
+contador++
+
+})
+
+xml+=`
+</measure>
+</part>
+</score-partwise>
+`
+
+let blob=new Blob([xml],{type:"application/xml"})
+
+let url=URL.createObjectURL(blob)
+
+let link=document.createElement("a")
+
+link.href=url
+link.download="melodia.musicxml"
+
+link.click()
+
+}
+</script>
+
+</body>
+</html>
