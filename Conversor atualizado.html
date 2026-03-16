@@ -4,44 +4,77 @@
 <head>
 
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Gerador de Melodia por Nome</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/midiwriter-js@2.1.1/build/MidiWriter.js"></script>
 
 <style>
 
 body{
-font-family:Arial;
+font-family:Arial, Helvetica, sans-serif;
 background:#1c1f2b;
 color:white;
-text-align:center;
-padding:40px;
+margin:0;
+padding:20px;
+display:flex;
+justify-content:center;
 }
 
 .container{
+
 background:#2a2f44;
 padding:30px;
-border-radius:10px;
+border-radius:12px;
 max-width:900px;
-margin:auto;
+width:100%;
+box-sizing:border-box;
+
+}
+
+h1{
+margin-top:0;
 }
 
 input,select{
-font-size:18px;
-padding:10px;
-width:250px;
-margin:5px;
+
+font-size:16px;
+padding:12px;
+width:100%;
+max-width:300px;
+margin:8px 0;
+border-radius:6px;
+border:none;
+box-sizing:border-box;
+
+}
+
+label{
+display:block;
+margin-top:10px;
+}
+
+.controls{
+
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+margin-top:15px;
+
 }
 
 button{
-padding:10px 20px;
-margin:6px;
+
+padding:12px 18px;
 cursor:pointer;
 border:none;
-border-radius:6px;
+border-radius:8px;
 background:#4b6cff;
 color:white;
+font-size:15px;
+flex-grow:1;
+
 }
 
 button:hover{
@@ -49,8 +82,25 @@ background:#6d87ff;
 }
 
 #melodia{
+
 margin-top:20px;
 font-size:18px;
+line-height:1.6;
+word-wrap:break-word;
+
+}
+
+@media (max-width:600px){
+
+h1{
+font-size:22px;
+}
+
+button{
+font-size:14px;
+padding:10px;
+}
+
 }
 
 </style>
@@ -64,8 +114,6 @@ font-size:18px;
 
 <input id="nome" placeholder="Digite seu nome">
 
-<br>
-
 <select id="instrumento">
 
 <option value="synth">Sintetizador</option>
@@ -74,17 +122,16 @@ font-size:18px;
 
 </select>
 
-<br>
-
-<label>BPM:</label>
+<label>BPM</label>
 <input type="number" id="bpm" value="100" min="40" max="200">
 
-<br><br>
+<div class="controls">
 
 <button onclick="converter()">Gerar Melodia</button>
 <button onclick="togglePlay()" id="playBtn">Play</button>
-<button onclick="baixarMIDI()">Baixar MIDI</button>
 <button onclick="baixarMusicXML()">Exportar MusicXML</button>
+
+</div>
 
 <h3>Sequência de notas</h3>
 
@@ -95,7 +142,6 @@ font-size:18px;
 <script>
 
 let melodiaGlobal=[]
-
 let synth
 let tocando=false
 let eventos=[]
@@ -217,6 +263,9 @@ release:1.5
 }).toDestination()
 }
 
+let bpm=document.getElementById("bpm").value
+Tone.Transport.bpm.value=bpm
+
 let tempo=0
 
 melodiaGlobal.forEach(n=>{
@@ -235,9 +284,6 @@ eventos.push(id)
 tempo+=0.5
 
 })
-
-let bpm = document.getElementById("bpm").value
-Tone.Transport.bpm.value = bpm
 
 Tone.Transport.start()
 
@@ -258,39 +304,6 @@ document.getElementById("playBtn").innerText="Play"
 tocando=false
 
 }
-
-}
-
-function baixarMIDI(){
-
-let track=new MidiWriter.Track()
-
-melodiaGlobal.forEach(n=>{
-
-if(n==="|"||n==="(pausa)"){
-track.addEvent(new MidiWriter.NoteEvent({wait:"4"}))
-}
-else{
-track.addEvent(new MidiWriter.NoteEvent({
-pitch:[n],
-duration:"4"
-}))
-}
-
-})
-
-let writer=new MidiWriter.Writer([track])
-
-let blob=new Blob([writer.buildFile()],{type:"audio/midi"})
-
-let url=URL.createObjectURL(blob)
-
-let link=document.createElement("a")
-
-link.href=url
-link.download="melodia.mid"
-
-link.click()
 
 }
 
@@ -404,6 +417,7 @@ link.download="melodia.musicxml"
 link.click()
 
 }
+
 </script>
 
 </body>
