@@ -171,10 +171,26 @@ return mapa[l]
 
 }
 
+function normalizarNota(n){
+
+const mapa={
+"Fb":"E",
+"Cb":"B",
+"E#":"F",
+"B#":"C"
+}
+
+return mapa[n] || n
+
+}
+
 function gerarEscala(base){
+
+base = normalizarNota(base)
 
 let usarFlat=base.includes("b")
 let escalaBase=usarFlat?cromaticaFlat:cromaticaSharp
+
 let index=escalaBase.indexOf(base)
 
 let escala=[]
