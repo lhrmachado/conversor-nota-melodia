@@ -184,20 +184,42 @@ return mapa[n] || n
 
 }
 
+function normalizarNota(n){
+
+const mapa={
+"Fb":"E",
+"Cb":"B",
+"E#":"F",
+"B#":"C"
+}
+
+return mapa[n] || n
+
+}
+
 function gerarEscala(base){
 
 base = normalizarNota(base)
 
-let usarFlat=base.includes("b")
-let escalaBase=usarFlat?cromaticaFlat:cromaticaSharp
+let usarFlat = base.includes("b")
+let escalaBase = usarFlat ? cromaticaFlat : cromaticaSharp
 
-let index=escalaBase.indexOf(base)
+let index = escalaBase.indexOf(base)
 
-let escala=[]
+if(index === -1){
+console.error("Nota base inválida:", base)
+return []
+}
 
-for(let i=0;i<13;i++){
+// gera 12 notas + repete a primeira no final (13ª)
+let escala = []
+
+for(let i=0;i<12;i++){
 escala.push(escalaBase[(index+i)%12])
 }
+
+// adiciona a oitava
+escala.push(escala[0])
 
 return escala
 
